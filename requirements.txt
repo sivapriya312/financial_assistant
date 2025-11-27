@@ -1,0 +1,14 @@
+flask
+python-dotenv
+joblib
+pandas
+numpy
+scikit-learn
+lightgbm
+prophet==1.2.1
+groqpython -m pip install groq
+
+requests
+plotly
+js2py
+jsPDF
