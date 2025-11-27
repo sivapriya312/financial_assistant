@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Financial Assistant — Goal Planner</title>
+
+  <!-- Fonts + Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Feather icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">✨</div>
+        <div>
+          <h1>AI Financial Assistant</h1>
+          <p class="muted">Goal-oriented savings & forecasts</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="plan">Plan Goal</button>
+        <button class="nav-btn" data-view="chat">AI Chat</button>
+        <button class="nav-btn" data-view="reports">Reports</button>
+        <button class="nav-btn" data-view="admin">Admin</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <label class="switch">
+          <input id="darkToggle" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+        <small class="muted">Dark Mode</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p class="muted">Plan, forecast and adjust your property & gold goals.</p>
+        </div>
+        <div class="top-actions">
+          <button id="btnExportCSV" class="btn ghost">Export CSV</button>
+          <button id="btnExportPDF" class="btn">Download Plan PDF</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="page view">
+        <div class="grid grid-3">
+          <div class="card">
+            <h3>Quick Actions</h3>
+            <div class="quick-grid">
+              <button class="quick" id="quickPlan">Plan My Goal</button>
+              <button class="quick" id="quickForecast">View Forecasts</button>
+              <button class="quick" id="quickChat">Ask AI Advisor</button>
+            </div>
+            <div class="mini-charts">
+              <div id="miniGold" class="mini-chart"></div>
+              <div id="miniProperty" class="mini-chart"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Key Metrics</h3>
+            <div class="metrics">
+              <div class="metric">
+                <div class="metric-title">Current Gold (₹/g)</div>
+                <div id="metricGold" class="metric-value">--</div>
+              </div>
+              <div class="metric">
+                <div class="metric-title">Total Saved</div>
+                <div id="metricSaved" class="metric-value">₹0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-title">Goal Progress</div>
+                <div id="metricProgress" class="metric-value">0%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Recent Plans</h3>
+            <div id="recentPlans" class="recent-list"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card large">
+            <h3>Gold Forecast & Savings Projection</h3>
+            <div id="chartForecast" style="height:320px;"></div>
+          </div>
+
+          <div class="card large">
+            <h3>Savings Plan Timeline</h3>
+            <div id="chartSavings" style="height:320px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="plan" class="page view hidden">
+        <div class="card wizard">
+          <div class="wizard-left">
+            <div class="steps">
+              <div class="step active" data-step="1">1. Income</div>
+              <div class="step" data-step="2">2. Goal</div>
+              <div class="step" data-step="3">3. Timeline</div>
+              <div class="step" data-step="4">4. Review</div>
+            </div>
+            <div class="step-content" id="stepContent">
+              <!-- Step 1 -->
+              <div class="step-pane" data-step="1">
+                <label>Monthly Net Income (INR)
+                  <input type="number" id="income" placeholder="e.g. 60000" />
+                </label>
+
+                <label>Existing Savings (INR)
+                  <input type="number" id="existingSavings" placeholder="e.g. 20000" />
+                </label>
+
+                <label>Risk Appetite
+                  <select id="riskAppetite">
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="step-pane hidden" data-step="2">
+                <label>Goal Type
+                  <select id="goalType">
+                    <option value="gold">Accumulate Gold</option>
+                    <option value="property">Buy Property</option>
+                  </select>
+                </label>
+
+                <div id="goldOpts">
+                  <label>Gold Target Type
+                    <select id="goldTargetType">
+                      <option value="grams">Grams</option>
+                      <option value="rupees">Rupees (₹)</option>
+                    </select>
+                  </label>
+
+                  <label id="goldTargetLabel">Target (grams)
+                    <input type="number" id="goldTarget" placeholder="e.g. 100" />
+                  </label>
+                </div>
+
+                <div id="propOpts" class="hidden">
+                  <label>Property Target Type
+                    <select id="propTargetType">
+                      <option value="sqft">Sq Ft</option>
+                      <option value="rupees">Rupees (₹)</option>
+                    </select>
+                  </label>
+
+                  <label id="propTargetLabel">Target (Sq Ft)
+                    <input type="number" id="propTarget" placeholder="e.g. 1200" />
+                  </label>
+
+                  <label>Locality
+                    <input type="text" id="propLocality" placeholder="Locality_84" />
+                  </label>
+
+                  <label>BHK
+                    <input type="number" id="propBHK" placeholder="e.g. 3" />
+                  </label>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="step-pane hidden" data-step="3">
+                <label>Duration (years)
+                  <input type="number" id="durationYears" value="5" min="1" />
+                </label>
+
+                <label>Preferred Savings Start Month
+                  <input type="month" id="startMonth" />
+                </label>
+
+                <div class="rangeRow">
+                  <label>Monthly Savings Goal Preview</label>
+                  <div id="livePreview" class="previewBox">—</div>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="step-pane hidden" data-step="4">
+                <h4>Review</h4>
+                <div id="reviewBox"></div>
+                <div class="wizard-actions">
+                  <button id="btnBack" class="btn ghost">Back</button>
+                  <button id="btnGenerate" class="btn">Generate Plan & Forecast</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wizard-footer">
+              <small class="muted">Tip: Use the AI Assistant for suggestions while planning.</small>
+            </div>
+          </div>
+
+          <div class="wizard-right">
+            <div class="card preview">
+              <h4>Live Plan Preview</h4>
+              <div id="previewSummary">Fill the form — preview updates live.</div>
+            </div>
+
+            <div class="card emergency">
+              <h4>Emergency / Expense Adjustment</h4>
+              <label>One-time Expense (INR)
+                <input type="number" id="oneTimeExpense" placeholder="e.g. 50000" />
+              </label>
+              <label>Recovery Period (months)
+                <input type="number" id="recoveryMonths" value="6" />
+              </label>
+              <label>Temporary Income Reduction (%)
+                <input type="number" id="incomeReductionPct" value="0" />
+              </label>
+              <div class="em-actions">
+                <button id="applyEmergency" class="btn">Apply & Recalculate</button>
+                <button id="resetEmergency" class="btn ghost">Reset</button>
+              </div>
+            </div>
+
+            <div class="card local-save">
+              <h4>Save / Load Plans</h4>
+              <input id="planName" placeholder="Plan name (optional)" />
+              <div class="plan-actions">
+                <button id="savePlanLocal" class="btn">Save Plan</button>
+                <button id="loadPlanLocal" class="btn ghost">Load Latest</button>
+                <button id="deletePlans" class="btn ghost">Delete Saved</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </section>
+
+      <section id="chat" class="page view hidden">
+        <div class="card chatPanel">
+          <div class="chatHeader">
+            <h3>AI Chat Advisor</h3>
+            <small class="muted">Context-aware advice — powered by Groq</small>
+          </div>
+          <div id="chatWindow" class="chatWindow"></div>
+          <div class="chatInput">
+            <input id="chatQuery" placeholder="Ask the AI (e.g. How much to save monthly to reach 100g in 5 years?)" />
+            <button id="sendChat" class="btn">Ask</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="reports" class="page view hidden">
+        <div class="card">
+          <h3>Saved Reports & Insights</h3>
+          <div id="reportsList"></div>
+        </div>
+      </section>
+
+      <section id="admin" class="page view hidden">
+        <div class="card">
+          <h3>Admin & Training</h3>
+          <p class="muted">Trigger retraining (use only if you understand CPU cost locally).</p>
+          <label>Sample size for property training
+            <input id="trainSample" type="number" value="50000" />
+          </label>
+          <div class="admin-actions">
+            <button id="btnTrain" class="btn danger">Trigger Retrain</button>
+            <div id="trainStatus" class="muted">Status: idle</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Floating chat widget (mini) -->
+  <div id="floatingChat" class="floating-chat">
+    <button id="openChatMini" title="Ask AI"><i data-feather="message-circle"></i></button>
+  </div>
+
+  <script src="script.js"></script>
+  <script>feather.replace()</script>
+</body>
+</html>
